@@ -6,6 +6,7 @@
 # License: PGL v3
 
 # 2010-08-19: now runs gawk instead of awk.  WinAVR only knows about gawk.
+# 2015-01-12: Refactoring by A. Wolf medusa@marsmail.de
  
 usage(){
     echo "\
@@ -17,15 +18,15 @@ Function: return AVR architecture (the
   <objfile.o> must exist but may be empty.
 Opts: 
   -x   Script debug (set -x)"
-    exit
+    exit 1
 }
 
 pname="${0##*/}"
 while getopts m:-:hx argv; do
     case $argv in
-	m) mcu="$OPTARG";;
-	x) set -x;;
-	*) usage;;
+    m) mcu="$OPTARG";;
+    x) set -x;;
+    *) usage;;
     esac
 done
 shift $((OPTIND-1))
@@ -36,30 +37,22 @@ case "$#" in
     *) echo >&2 "$pname: Too many arguments: $*"; exit 1;;
 esac
 
-magic=";#magic1295671ghkl-."
 # call gcc, asking it for the command line which it would use for
 # linking:
-#20130104 -us
-set -- $(avr-gcc -m"$mcu" -### "$1" -o "$magic" 2>&1 \
-         | gawk '/^collect2 :/||/"-m".*'"$magic"'.*"-lgcc"/')
-#set -- $(avr-gcc -m"$mcu" -### "$1" -o "$magic" 2>&1 \
-#         | gawk '/^avr-gcc:/||/"-m".*'"$magic"'.*"-lgcc"/')
-
-if [ "$1" = "avr-gcc:" ]; then
-    # we have an error message from gcc:
-    echo "$*"
+AVR_GCC_OUTPUT="$(avr-gcc -m"$mcu" -### "$1" 2>&1)"
+if [ $? != 0 ]; then  #avr-gcc error
+    echo "$AVR_GCC_OUTPUT"
     exit 1
 fi
 
-# retrieve architecture argument from gcc's commandline (the argument
-# which follows '"-m"'):
-while [ -n "$2" ]; do
-    if [ "$1" = '"-m"' ]; then
-	eval echo $2		# eval: remove quotes
-	exit 0
-    fi
-    shift
-done
-echo >&2 "\
-$pname: Could not find an architecture in avr-gcc's internal ld command line"
-exit 1
+STRIP_PRE=${AVR_GCC_OUTPUT##*-m}
+AVR_ARCHITECTURE=${STRIP_PRE%% *}
+
+if [ -n "$AVR_ARCHITECTURE" ]; then # any match?
+    echo $AVR_ARCHITECTURE
+    exit 0
+fi
+
+echo >&2 \
+"$pname: Could not find an architecture in avr-gcc's internal ld command line"
+exit 1;
