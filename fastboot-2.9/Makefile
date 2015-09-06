@@ -150,7 +150,7 @@ ifndef BOOTRST
 	  --cref $+ -o $@ --defsym Application="$$LOADER_START-2"
 else
 	vars="$$(./get_bootsection_addrs.sh $(FLASHEND) $(FIRSTBOOTSTART) \
-                $(SECONDBOOTSTART) $(THIRDBOOTSTART) $(FORTHBOOTSTART))"; \
+                $(SECONDBOOTSTART) $(THIRDBOOTSTART) $(FOURTHBOOTSTART))"; \
 	arch="$$(./get_avr_arch.sh -mmcu=$(MCU) bootload.o)"; \
 	echo "arch=$$arch";\
 	echo "$$vars"; \
